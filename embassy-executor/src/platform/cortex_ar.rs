@@ -1,16 +1,44 @@
 #[cfg(arm_profile = "legacy")]
 compile_error!("`arch-cortex-ar` does not support the legacy ARM profile, WFE/SEV are not available.");
 
-/// GIC Distributor base for the Cortex-A built-in GIC, derived from the CP15
-/// Configuration Base Address Register (CBAR/PERIPHBASE).
+/// Platform-supplied GIC Distributor base, or 0 to derive it from CBAR.
 ///
-/// On Cortex-A MPCore parts (A5/A7/A9/A15) `PERIPHBASE` is read via
+/// `0` (the default) means "discover via CBAR/PERIPHBASE", which is correct for
+/// Cortex-A MPCore parts where the GIC sits at `PERIPHBASE + 0x1000`. On SoCs
+/// whose GIC is integrated at a fixed address unrelated to CBAR — e.g. the
+/// single-core Renesas RZ/A1 (GIC Distributor at `0xE820_1000`, while CBAR reads
+/// `0xF000_0000`) — the application must call [`set_gicd_base`] with the real
+/// Distributor address before starting an interrupt executor.
+#[cfg(feature = "executor-interrupt")]
+static GICD_BASE_OVERRIDE: core::sync::atomic::AtomicUsize = core::sync::atomic::AtomicUsize::new(0);
+
+/// Override the GIC Distributor base address used by the interrupt-executor SGI
+/// pender, bypassing CBAR/PERIPHBASE discovery.
+///
+/// Pass the Distributor base (the MMIO block whose `GICD_SGIR` lives at offset
+/// `0xF00`). Required on parts where the GIC is not at `PERIPHBASE + 0x1000`
+/// (e.g. Renesas RZ/A1: `0xE820_1000`). Must be called once at startup, before
+/// any interrupt executor is started or any task on it is woken.
+#[cfg(feature = "executor-interrupt")]
+pub fn set_gicd_base(base: usize) {
+    GICD_BASE_OVERRIDE.store(base, core::sync::atomic::Ordering::Relaxed);
+}
+
+/// GIC Distributor base for the Cortex-A built-in GIC.
+///
+/// Uses the address set by [`set_gicd_base`] when one was provided; otherwise
+/// derives it from the CP15 Configuration Base Address Register (CBAR /
+/// PERIPHBASE). On Cortex-A MPCore parts (A5/A7/A9/A15) `PERIPHBASE` is read via
 /// `MRC p15, 4, Rt, c15, c0, 0`, and the GIC Distributor sits at
 /// `PERIPHBASE + 0x1000`. (Note this differs from the Cortex-R CBAR encoding
 /// used by `aarch32_cpu::register::ImpCbar`; interrupt-executor support targets
 /// the Cortex-A GICv1/v2 MMIO interface.)
 #[cfg(feature = "executor-interrupt")]
 fn gicd_base() -> *mut u32 {
+    let override_base = GICD_BASE_OVERRIDE.load(core::sync::atomic::Ordering::Relaxed);
+    if override_base != 0 {
+        return override_base as *mut u32;
+    }
     let periphbase: u32;
     // Safety: reading PERIPHBASE via CBAR has no side effects.
     unsafe {
