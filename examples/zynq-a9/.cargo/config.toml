@@ -1,0 +1,6 @@
+[target.armv7a-none-eabi]
+# Runs directly under QEMU; the example exits via semihosting when done.
+runner = "qemu-system-arm -machine xilinx-zynq-a9 -cpu cortex-a9 -m 256M -nographic -semihosting-config enable=on,target=native -kernel"
+
+[build]
+target = "armv7a-none-eabi"

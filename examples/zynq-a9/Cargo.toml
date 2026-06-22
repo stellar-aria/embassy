@@ -1,0 +1,26 @@
+[package]
+edition = "2021"
+name = "embassy-zynq-a9-examples"
+version = "0.1.0"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+aarch32-cpu = { version = "0.3", features = ["critical-section-single-core"] }
+aarch32-rt = "0.3"
+critical-section = "1.2"
+semihosting = { version = "0.1.25", features = ["stdio"] }
+embassy-executor = { version = "0.10.0", path = "../../embassy-executor", features = ["platform-cortex-ar", "executor-thread", "executor-interrupt"] }
+embassy-sync = { version = "0.8.0", path = "../../embassy-sync" }
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+debug = 2
+
+[package.metadata.embassy]
+build = [
+  { target = "armv7a-none-eabi", artifact-dir = "out/examples/zynq-a9" }
+]

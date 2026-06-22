@@ -163,7 +163,9 @@ platform-std = ["_platform"]
 ## - Only usable on **bare-metal**. Do not use this if you want to run the executor inside an RTOS thread, you must use RTOS primitives to sleep/notify the thread instead.
 ## - Only usable on **privileged mode**. 
 platform-cortex-m = ["_platform", "dep:cortex-m"]
-## Cortex-A/R platform. Uses `WFE`/`SEV` for the thread executor. Interrupt executor is not supported.
+## Cortex-A/R platform. Uses `WFE`/`SEV` for the thread executor, and GIC Software-Generated
+## Interrupts (SGIs) on the built-in GIC (GICv1/v2, e.g. the Cortex-A9 MPCore GIC) for the
+## interrupt executor.
 ## 
 ## - Only usable on **single-core chips**. (Exception: the thread executor might work if your chip has wired the "event" signal between the cores, so `SEV` on one core can break a `WFE` in the other)
 ## - Only usable on **bare-metal**. Do not use this if you want to run the executor inside an RTOS thread, you must use RTOS primitives to sleep/notify the thread instead.
@@ -201,7 +203,7 @@ metadata-name = ["embassy-executor-macros/metadata-name"]
 
 ## Enable the thread-mode executor (using WFE/SEV in Cortex-M, WFI in other embedded platforms)
 executor-thread = []
-## Enable the interrupt-mode executor (available in Cortex-M only)
+## Enable the interrupt-mode executor (available on Cortex-M, Cortex-A/R via the GIC, and Zynq-7000)
 executor-interrupt = []
 ## Enable tracing hooks
 trace = ["_any_trace"]
